@@ -3,6 +3,7 @@ Run:  python main.py
 """
 import logging
 import os
+import asyncio
 
 from telegram.ext import Application, MessageHandler, filters
 
@@ -40,6 +41,12 @@ def main() -> None:
     register_jobs(app)
 
     log.info("Atlas is running — talk to your bot on Telegram.")
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
     app.run_polling(drop_pending_updates=True)
 
 
