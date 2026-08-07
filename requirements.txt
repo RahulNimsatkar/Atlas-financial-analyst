@@ -1,4 +1,4 @@
-python-telegram-bot[job-queue]~=21.6
+python-telegram-bot[job-queue,webhooks]~=21.6
 groq~=0.13.0
 google-generativeai~=0.8.3
 yfinance~=0.2.50
