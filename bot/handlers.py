@@ -1,6 +1,8 @@
 """Telegram handlers — text, voice, photos, PDFs, sheet links.
 No slash commands, no buttons, no menus. Pure conversation."""
+import html
 import logging
+import re
 
 from telegram import Update
 from telegram.constants import ChatAction, ParseMode
@@ -13,6 +15,32 @@ from services import media, pdf, sheets
 log = logging.getLogger(__name__)
 
 
+def _md_to_html(text: str) -> str:
+    """Convert the model's standard Markdown output to Telegram HTML.
+
+    Telegram's legacy Markdown only understands *bold* and _italic_, so
+    **double-asterisk** headers and mixed ***triple*** markers render as raw
+    asterisks.  HTML mode is strict but predictable — escape first, then tag.
+    """
+    # 1. Escape HTML special chars so our own tags aren't mangled
+    text = html.escape(text)
+    # 2. Bold + italic: ***text***
+    text = re.sub(r'\*{3}(.+?)\*{3}', r'<b><i>\1</i></b>', text, flags=re.DOTALL)
+    # 3. Bold: **text**
+    text = re.sub(r'\*{2}(.+?)\*{2}', r'<b>\1</b>', text, flags=re.DOTALL)
+    # 4. Inline code: `code`
+    text = re.sub(r'`([^`\n]+)`', r'<code>\1</code>', text)
+    # 5. Markdown headers (#, ##, …) → bold line
+    text = re.sub(r'^#{1,6}\s+(.+)$', r'<b>\1</b>', text, flags=re.MULTILINE)
+    # 6. Bullet lists (* item / - item) — must come BEFORE inline * handling
+    text = re.sub(r'^\s*[*\-]\s+', '• ', text, flags=re.MULTILINE)
+    # 7. Inline single-asterisk bold (*ticker*, *$180*) — skip lone bare *
+    text = re.sub(r'\*(\S(?:[^*\n]*\S)?)\*', r'<b>\1</b>', text)
+    # 8. Underscore italic: _text_
+    text = re.sub(r'_(\S(?:[^_\n]*\S)?)_', r'<i>\1</i>', text)
+    return text
+
+
 def _get_user(update: Update):
     tg = update.effective_user
     return repo.get_or_create_user(tg.id, tg.first_name or "")
@@ -20,7 +48,9 @@ def _get_user(update: Update):
 
 async def _reply(update: Update, text: str) -> None:
     try:
-        await update.effective_message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        await update.effective_message.reply_text(
+            _md_to_html(text), parse_mode=ParseMode.HTML
+        )
     except Exception:
         await update.effective_message.reply_text(text)  # plain fallback
 
