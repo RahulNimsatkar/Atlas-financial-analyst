@@ -1,9 +1,12 @@
-"""Market data via yfinance — quotes, fundamentals, earnings, movers. No API key."""
+"""Market data — quotes via direct HTTP, fundamentals/history via yfinance. No API key."""
 from typing import Dict, List
 
+import httpx
 import yfinance as yf
 
 MAJOR_INDICES = {"^GSPC": "S&P 500", "^IXIC": "Nasdaq", "^DJI": "Dow Jones"}
+
+_YAHOO_HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 
 def _fmt_big(n) -> str:
@@ -20,18 +23,20 @@ def _fmt_big(n) -> str:
 
 
 def get_quote(ticker: str) -> Dict:
-    """Current price + day change for a ticker."""
-    t = yf.Ticker(ticker)
-    info = t.fast_info
-    price = info.last_price
-    prev = info.previous_close
+    """Current price + day change via direct Yahoo Finance HTTP call (no pandas/numpy)."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d"
+    resp = httpx.get(url, headers=_YAHOO_HEADERS, timeout=10)
+    resp.raise_for_status()
+    meta = resp.json()["chart"]["result"][0]["meta"]
+    price = meta.get("regularMarketPrice")
+    prev = meta.get("previousClose") or meta.get("chartPreviousClose")
     change_pct = ((price - prev) / prev * 100) if (price and prev) else 0.0
     return {
         "ticker": ticker.upper(),
         "price": round(price, 2) if price else None,
         "prev_close": round(prev, 2) if prev else None,
         "change_pct": round(change_pct, 2),
-        "currency": getattr(info, "currency", "USD"),
+        "currency": meta.get("currency", "USD"),
     }
 
 
