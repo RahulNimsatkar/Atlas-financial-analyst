@@ -23,9 +23,16 @@ def extract_sheet_id(text: str) -> Optional[Tuple[str, str]]:
 def fetch_sheet_as_text(sheet_id: str, gid: str = "0") -> Tuple[bool, str]:
     """Download sheet as CSV and return an LLM-friendly text representation.
     Returns (ok, text_or_error)."""
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+    _headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+    }
     try:
-        r = httpx.get(url, timeout=20, follow_redirects=True)
+        r = httpx.get(url, timeout=20, follow_redirects=True, headers=_headers)
         if r.status_code != 200 or "text/html" in r.headers.get("content-type", ""):
             return False, (
                 "I couldn't open that sheet — it looks private. "

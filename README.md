@@ -15,11 +15,11 @@ all through pure natural conversation. **No commands, no buttons, no menus.**
   GOOGL from an investment perspective"), news, earnings, SEC filings
 - **Natural-language alerts** — "alert me if TSLA moves 5%", "remind me 1h
   before Apple's earnings", "track Nvidia's SEC filings" → real background jobs
-- **📊 Google Sheets intelligence** — paste any link-shared Sheet → analysis,
-  anomaly detection, Q&A
+- **📊 Google Sheets intelligence** — paste any link-shared Sheet → instant
+  analysis, anomaly detection, Q&A. Works with any "Anyone with the link" sheet.
 - **📄 PDF intelligence** — upload an annual report / 10-K → summary + Q&A
 - **🎙 Voice + 🖼 images** — voice notes transcribed (Whisper), chart
-  screenshots analyzed (Gemini vision)
+  screenshots analyzed (Google Gemma vision via OpenRouter)
 - **Memory** — remembers everything it learns. Ask it: *"What do you know
   about me?"*
 
@@ -28,7 +28,7 @@ all through pure natural conversation. **No commands, no buttons, no menus.**
 ```
 Telegram ⇄ python-telegram-bot (async)
                 │
-        Agent core (Groq Llama 3.3 70B, function calling)
+        Agent core (tool-calling loop)
                 │
    ┌────────────┼───────────────┐
  Tools       JobQueue         Memory
@@ -36,13 +36,19 @@ Telegram ⇄ python-telegram-bot (async)
  news (Finnhub/Yahoo)  price alerts  conversation history
  EDGAR filings      filing poller   watchlist
  sheets / pdf       reminders       (SQLite/SQLAlchemy)
- Gemini (vision/long docs)
 ```
 
-- **Chat/reasoning:** Groq `llama-3.3-70b-versatile` (free tier, tool calling)
-- **Voice:** Groq `whisper-large-v3`
-- **Vision/long docs:** Gemini `gemini-2.0-flash` (free tier)
-- Different models per task, chosen for what each does best.
+### 🤖 AI Models (multi-model architecture)
+
+| Task | Model | Provider | Why |
+|---|---|---|---|
+| **Normal chat** | llama-3.1-8b-instant | Groq | Fast, low-latency responses |
+| **Research & analysis** | llama-3.3-70b-versatile | Groq | Deep reasoning for comparisons, fundamentals |
+| **Voice transcription** | whisper-large-v3 | Groq | Industry-leading accuracy |
+| **Image/chart analysis** | gemma-4-26b-a4b-it:free | OpenRouter | Free vision model |
+| **Fallback (Groq daily cap)** | llama-3.1-8b-instruct | NVIDIA | Auto-switches when Groq limit hit |
+
+The bot **automatically chooses** the right model based on your query. Keywords like "compare", "analyze", "fundamentals" → 70B research model. Everything else → fast 8B model.
 
 ## 🚀 Setup & Run
 
@@ -83,25 +89,30 @@ cp .env.example .env
 Then open `.env` and fill in your keys:
 
 ```env
+# Required
 TELEGRAM_BOT_TOKEN=your_token_here
 GROQ_API_KEY=your_key_here
-GEMINI_API_KEY=your_key_here
+
+# Recommended (both free)
+OPENROUTER_API_KEY=your_key_here
 FINNHUB_API_KEY=your_key_here
 
-# Local development (SQLite — no setup needed)
-DATABASE_URL=sqlite:///atlas.db
+# Optional (auto-fallback when Groq daily limit hit)
+NVIDIA_API_KEY=your_key_here
 
-# Production / deployment (Neon PostgreSQL — free at neon.tech)
-# DATABASE_URL=postgresql://user:pass@ep-xyz.aws.neon.tech/neondb?sslmode=require
+# Database
+DATABASE_URL=sqlite:///atlas.db  # local dev (auto-created)
+# DATABASE_URL=postgresql://...  # production (Neon free tier)
 ```
 
-| Key | Where to get it | Cost |
-|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | Telegram → [@BotFather](https://t.me/BotFather) → /newbot | Free |
-| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) | Free |
-| `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free |
-| `FINNHUB_API_KEY` | [finnhub.io](https://finnhub.io) | Free |
-| `DATABASE_URL` | [neon.tech](https://neon.tech) (for deployment) | Free |
+| Key | Where to get it | Required? | Cost |
+|---|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/BotFather) → /newbot | ✅ Required | Free |
+| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) | ✅ Required | Free |
+| `OPENROUTER_API_KEY` | [openrouter.ai](https://openrouter.ai) | 📷 For image analysis | Free |
+| `FINNHUB_API_KEY` | [finnhub.io](https://finnhub.io) | 📰 For news | Free |
+| `NVIDIA_API_KEY` | [build.nvidia.com](https://build.nvidia.com) | ⚡ Groq fallback | Free |
+| `DATABASE_URL` | [neon.tech](https://neon.tech) | 🚀 For deployment | Free |
 
 ### Step 5 — Run the bot
 
