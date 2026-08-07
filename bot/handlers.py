@@ -43,8 +43,13 @@ async def _process_text(update: Update, context: ContextTypes.DEFAULT_TYPE,
             await _reply(update, content)
             return
         repo.save_document(user.id, "sheet", f"Google Sheet {link[0][:8]}…", content)
-        text += ("\n[system note: the Google Sheet was fetched successfully and is "
-                 "now the active document — use read_active_document to analyze it]")
+        user_question = text[:500] if not text.startswith("http") else ""
+        text = (
+            f"[SHEET LOADED]\n{content}\n\n"
+            + (f"User's question: {user_question}\n" if user_question else "")
+            + "Give a concise analysis of this sheet. "
+            "Highlight key numbers, totals, and anything notable."
+        )
     await _typing(update, context)
     reply = await handle_user_message(user, text)
     await _reply(update, reply)
