@@ -6,7 +6,7 @@ from db.models import (
     Alert, Document, Message, ProfileFact, SessionLocal, User, WatchlistItem,
 )
 
-SHORT_TERM_LIMIT = 20  # messages injected into each prompt
+SHORT_TERM_LIMIT = 10  # messages injected into each prompt
 
 
 # ---------- users ----------

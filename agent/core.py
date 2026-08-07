@@ -44,6 +44,13 @@ def _parse_retry_after(exc: _groq.RateLimitError) -> str:
     return "a little while"
 
 
+def _trim_messages(messages: list) -> list:
+    """Keep system prompt + last 6 conversation messages to reduce token count."""
+    system = [m for m in messages if m["role"] == "system"]
+    history = [m for m in messages if m["role"] != "system"]
+    return system + history[-6:]
+
+
 def _call_with_retry(messages: list, use_tools: bool = True,
                      max_attempts: int = 3, model: str = None):
     """Groq API call with:
@@ -74,6 +81,12 @@ def _call_with_retry(messages: list, use_tools: bool = True,
                 log.warning("malformed tool call from model — falling back to no-tools reply")
                 return _call_with_retry(messages, use_tools=False,
                                         max_attempts=2, model=model)
+            raise
+        except _groq.APIStatusError as exc:
+            if exc.status_code == 413:
+                log.warning("413 request too large — retrying with trimmed history")
+                return _call_with_retry(_trim_messages(messages), use_tools=use_tools,
+                                        max_attempts=1, model=model)
             raise
     return None
 
