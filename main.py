@@ -44,6 +44,7 @@ def main() -> None:
         webhook_url = RENDER_URL.rstrip("/") + "/webhook"
         log.info("Atlas starting with webhook: %s", webhook_url)
         set_self_url(RENDER_URL)
+        asyncio.set_event_loop(asyncio.new_event_loop())
         app.run_webhook(
             listen="0.0.0.0",
             port=port,
@@ -54,10 +55,7 @@ def main() -> None:
         # Local development — use polling
         start_health_server(int(os.getenv("PORT", "8080")))
         log.info("Atlas running locally with polling.")
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.set_event_loop(asyncio.new_event_loop())
+        asyncio.set_event_loop(asyncio.new_event_loop())
         app.run_polling(drop_pending_updates=True)
 
 
