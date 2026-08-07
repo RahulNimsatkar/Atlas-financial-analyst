@@ -177,6 +177,6 @@ def register_jobs(app: Application) -> None:
     jq.run_repeating(price_alert_tick, interval=300,  first=30)
     jq.run_repeating(filing_tick,      interval=3600, first=60)
     jq.run_repeating(
-        lambda ctx: ping_self(),       interval=600,  first=120,  # keep-alive every 10 min
+        lambda ctx: asyncio.to_thread(ping_self),  interval=600,  first=120,
     )
     log.info("scheduler jobs registered")
