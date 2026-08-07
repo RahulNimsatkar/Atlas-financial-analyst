@@ -27,9 +27,7 @@ def main() -> None:
         raise SystemExit("Set GROQ_API_KEY in .env (free at console.groq.com)")
 
     init_db()
-    start_health_server(int(os.getenv("PORT", "8080")))
-    if RENDER_URL:
-        set_self_url(RENDER_URL)
+
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     app.add_handler(MessageHandler(filters.TEXT, on_text))
@@ -40,14 +38,27 @@ def main() -> None:
 
     register_jobs(app)
 
-    log.info("Atlas is running — talk to your bot on Telegram.")
-
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
-
-    app.run_polling(drop_pending_updates=True)
+    if RENDER_URL:
+        # Deployed on Render — use webhooks to avoid polling conflicts on redeploy
+        port = int(os.getenv("PORT", "8080"))
+        webhook_url = RENDER_URL.rstrip("/") + "/webhook"
+        log.info("Atlas starting with webhook: %s", webhook_url)
+        set_self_url(RENDER_URL)
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            webhook_url=webhook_url,
+            drop_pending_updates=True,
+        )
+    else:
+        # Local development — use polling
+        start_health_server(int(os.getenv("PORT", "8080")))
+        log.info("Atlas running locally with polling.")
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+        app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
