@@ -166,4 +166,7 @@ atlas-financial-assistant/
 ├── scheduler/         # briefings, price alerts, filing poller, reminders
 ├── services/          # market, news, edgar, sheets, pdf, media
 └── db/                # SQLAlchemy models + repository
+*
 ```
+
+
